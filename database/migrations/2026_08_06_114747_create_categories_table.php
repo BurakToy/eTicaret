@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
-            $table->bigInteger('parent_id')->nullable();
+            $table->unsignedBigInteger('parent_id')->nullable();
             $table->string('name',150);
             $table->string('slug',170)->unique();
             $table->string('image_path',255)->nullable();
@@ -26,7 +26,8 @@ return new class extends Migration
             $table->softDeletes();
             $table->timestamps();
 
-            // foreign key yazılacak
+            $table->foreign('parent_id')->on('categories')->references('id');
+
         });
     }
 

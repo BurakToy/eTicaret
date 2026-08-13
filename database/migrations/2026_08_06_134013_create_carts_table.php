@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('carts_user_id')->nullable();
             $table->string('carts_session_id',100)->nullable();
             $table->bigInteger('cart_item_id');
-
+            // eksik var burada
             $table->softDeletes();
             $table->timestamps();
         });

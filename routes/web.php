@@ -1,7 +1,8 @@
 <?php
 
+use App\Models\category;
+use App\Models\product;
 use Illuminate\Support\Facades\Route;
-
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -16,6 +17,14 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/a', function () {
+    $id=1;
+    $category = category::find($id);
+    $products = $category->getProduct;
+    return dd($products);
+});
+
 
 
 Route::middleware([

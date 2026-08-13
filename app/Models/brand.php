@@ -4,8 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class brand extends Model
 {
-    use HasFactory;
+    use HasFactory ,SoftDeletes;
+    protected $table='brands';
+    public function getProduct(){
+        return $this->hasMany(Product::class,'brand_id','id');
+    }
 }

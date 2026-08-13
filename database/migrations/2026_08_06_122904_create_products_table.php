@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('sku',60)->unique();
             $table->string('barcode',60)->unique()->nullable();
             $table->string('name',200);
-            $table->string('slug',200)->unique();
+            $table->string('slug',220)->unique();
             $table->string('short_description',500);
             $table->text('long_description');
             $table->string('seo_title',200)->nullable();
