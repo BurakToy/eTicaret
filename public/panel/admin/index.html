@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard | Voltra Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../img/favicon.svg">
+<link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<script src="../js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin.js"></script>
+<script>
+const root = renderShell("index.html", "Dashboard", '<button class="btn btn-sm btn-outline-primary" id="refresh">↻ Yenile</button><span class="muted small align-self-center" id="lastUp"></span>');
+function render() {
+  const db = DB.load();
+  const active = db.products.filter(p => !p.deletedAt);
+  const today = "2026-08-17";
+  const todayOrders = db.orders.filter(o => o.date >= "2026-08-10");
+  const revenue = db.orders.filter(o => o.status !== "iptal").reduce((s, o) => s + o.total, 0);
+  const pending = db.orders.filter(o => ["beklemede", "onaylandi"].includes(o.status));
+  const low = active.filter(p => productStock(p) <= (p.minStock ?? 5));
+  const bestSellers = (() => {
+    const m = {};
+    db.orders.filter(o => o.status !== "iptal").forEach(o => o.items.forEach(it => { m[it.name] = (m[it.name] || 0) + it.qty; }));
+    return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  })();
+  const days = ["11 Ağu", "12 Ağu", "13 Ağu", "14 Ağu", "15 Ağu", "16 Ağu", "17 Ağu"];
+  const series = days.map((_, i) => db.orders.filter(o => o.status !== "iptal").reduce((s, o, j) => s + ((j + i) % 4 === 0 ? o.total : 0), 0) || 25000 + i * 9000);
+  const max = Math.max(...series);
+
+  root.innerHTML = `
+  <div class="row g-3">
+    ${[
+      ["Bugünkü Sipariş", todayOrders.length, "Son 7 gün"],
+      ["Toplam Satış", money(revenue), "İptaller hariç"],
+      ["Toplam Müşteri", db.customers.length, "Kayıtlı üye"],
+      ["Bekleyen Sipariş", pending.length, "Beklemede + Onaylandı"],
+      ["Düşük Stok", low.length, "Minimum seviyenin altında"],
+      ["Aktif Ürün", active.filter(p => p.status === "yayinda").length, active.length + " kayıtlı ürün"],
+    ].map(([l, v, s]) => `<div class="col-6 col-lg-2"><div class="card-a stat"><span class="lbl">${l}</span><span class="val">${v}</span><span class="sub">${s}</span></div></div>`).join("")}
+  </div>
+
+  <div class="row g-3 mt-1">
+    <div class="col-lg-8"><div class="card-a">
+      <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 m-0">Satış Grafiği (günlük)</h2><span class="muted small">Son 7 gün</span></div>
+      <div class="chart">${series.map((v, i) => `<div class="bar" style="height:${Math.max(6, (v / max) * 100)}%" title="${money(v)}"><span>${days[i]}</span></div>`).join("")}</div>
+      <div class="mt-4 pt-2 muted small">Toplam: ${money(series.reduce((a, b) => a + b, 0))}</div>
+    </div></div>
+    <div class="col-lg-4"><div class="card-a">
+      <h2 class="h6">En Çok Satan Ürünler</h2>
+      <ol class="mb-0 ps-3">${bestSellers.map(([n, q]) => `<li class="mb-2">${n} <span class="muted">· ${q} adet</span></li>`).join("") || "<li class='muted'>Kayıt yok</li>"}</ol>
+    </div></div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <div class="col-lg-7"><div class="card-a">
+      <div class="d-flex justify-content-between mb-2"><h2 class="h6 m-0">Son Siparişler</h2><a href="siparisler.html" class="small">Tümü →</a></div>
+      <div class="table-wrap"><table class="table-a">
+        <thead><tr><th>Sipariş No</th><th>Müşteri</th><th>Tutar</th><th>Durum</th><th></th></tr></thead>
+        <tbody>${db.orders.slice(0, 6).map(o => `<tr><td><b>${o.id}</b><div class="muted small">${o.date}</div></td><td>${o.customerName}</td><td>${money(o.total)}</td><td>${statusBadge(o.status)}</td><td><a class="btn btn-sm btn-outline-secondary" href="siparis-detay.html?id=${encodeURIComponent(o.id)}">Detay</a></td></tr>`).join("")}</tbody>
+      </table></div>
+    </div></div>
+    <div class="col-lg-5"><div class="card-a">
+      <div class="d-flex justify-content-between mb-2"><h2 class="h6 m-0 text-danger">Düşük Stok Uyarısı</h2><a href="stok.html" class="small">Stok yönetimi →</a></div>
+      <div class="table-wrap"><table class="table-a">
+        <thead><tr><th>Ürün</th><th>Stok</th><th>Min.</th></tr></thead>
+        <tbody>${low.slice(0, 6).map(p => `<tr><td><a href="urun-duzenle.html?id=${p.id}">${p.name}</a></td><td>${stockBadge(p)}</td><td>${p.minStock}</td></tr>`).join("") || "<tr><td colspan='3' class='muted'>Kritik stok yok</td></tr>"}</tbody>
+      </table></div>
+      <hr>
+      <h2 class="h6">Yeni Üyeler</h2>
+      ${db.customers.slice(-3).map(c => `<div class="d-flex justify-content-between small py-1"><a href="musteri-detay.html?id=${c.id}">${c.name}</a><span class="muted">${c.createdAt}</span></div>`).join("")}
+    </div></div>
+  </div>`;
+  document.getElementById("lastUp").textContent = "Güncellendi: " + new Date().toLocaleTimeString("tr-TR");
+}
+render();
+document.getElementById("refresh").onclick = render;
+setInterval(render, 60000);
+</script>
+</body>
+</html>

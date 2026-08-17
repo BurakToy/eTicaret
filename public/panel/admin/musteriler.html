@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Müşteriler | Voltra Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../img/favicon.svg">
+<link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<script src="../js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin.js"></script>
+<script>
+const root = renderShell("musteriler.html", "Müşteri Yönetimi");
+let db = DB.load();
+const st = { q: "", active: "" };
+const orderCount = (id) => db.orders.filter(o => o.customerId === id).length;
+
+function render() {
+  const list = db.customers.filter(c => {
+    if (st.active && String(c.active) !== st.active) return false;
+    if (st.q && !normalizeTR([c.name, c.email, c.phone].join(" ")).includes(normalizeTR(st.q))) return false;
+    return true;
+  });
+  root.innerHTML = `
+  <div class="card-a mb-3"><div class="filters">
+    <div><label class="form-label small mb-1">Ara (ad, e-posta, telefon)</label><input class="form-control form-control-sm" id="q" value="${st.q}"></div>
+    <div><label class="form-label small mb-1">Durum</label><select class="form-select form-select-sm" id="active"><option value="">Tümü</option><option value="true" ${st.active==="true"?"selected":""}>Aktif</option><option value="false" ${st.active==="false"?"selected":""}>Askıda</option></select></div>
+    <span class="ms-auto muted small align-self-center">${list.length} üye</span>
+  </div></div>
+  <div class="card-a table-wrap"><table class="table-a">
+    <thead><tr><th>Ad Soyad</th><th>E-posta</th><th>Telefon</th><th>Üyelik</th><th>Sipariş</th><th>Durum</th><th></th></tr></thead>
+    <tbody>${list.map(c => `<tr>
+      <td><b>${c.name}</b></td><td>${c.email}</td><td>${c.phone}</td><td>${c.createdAt}</td><td>${orderCount(c.id)}</td>
+      <td><span class="badge text-bg-${c.active ? "success" : "danger"}">${c.active ? "Aktif" : "Askıda"}</span></td>
+      <td><a class="btn btn-sm btn-outline-primary" href="musteri-detay.html?id=${c.id}">Detay</a></td>
+    </tr>`).join("") || `<tr><td colspan="7" class="muted text-center p-4">Kayıt yok.</td></tr>`}</tbody>
+  </table></div>
+  <div class="muted small mt-2">KVKK: müşteri kişisel verilerine erişim yalnızca yetkili admin rolüyle mümkündür ve erişimler loglanmalıdır.</div>`;
+  ["q", "active"].forEach(k => { const e = document.getElementById(k); e.oninput = e.onchange = () => { st[k] = e.value; render(); }; });
+}
+render();
+</script>
+</body>
+</html>

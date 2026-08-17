@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yönetici Girişi | Voltra Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../img/favicon.svg">
+<link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<div class="login-wrap">
+  <form class="login-card" id="loginForm" novalidate>
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <span class="brand-mark" style="color:#fff">V</span>
+      <div><strong style="font-family:'Space Grotesk',sans-serif;font-size:20px">Voltra Admin</strong><div class="muted" style="font-size:13px">Yönetim paneli girişi</div></div>
+    </div>
+    <div class="alert alert-info py-2 small">Demo giriş: <b>admin@voltra.com</b> / <b>admin123</b></div>
+    <div class="mb-3">
+      <label class="form-label">E-posta</label>
+      <input class="form-control" type="email" id="email" value="admin@voltra.com" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Şifre</label>
+      <input class="form-control" type="password" id="pass" value="admin123" required>
+    </div>
+    <div class="text-danger small mb-2 d-none" id="err">E-posta veya şifre hatalı.</div>
+    <button class="btn btn-primary w-100" type="submit">Giriş Yap</button>
+    <a class="btn btn-link w-100 mt-2" href="../index.html">← Mağazaya dön</a>
+  </form>
+</div>
+<script>
+document.getElementById("loginForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const ok = document.getElementById("email").value.trim() === "admin@voltra.com" && document.getElementById("pass").value === "admin123";
+  if (!ok) return document.getElementById("err").classList.remove("d-none");
+  localStorage.setItem("voltra:admin:session", "ok");
+  const next = new URLSearchParams(location.search).get("next");
+  location.href = next && !/^https?:/.test(next) ? next : "index.html";
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ürünler | Voltra Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../img/favicon.svg">
+<link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<script src="../js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin.js"></script>
+<script>
+const root = renderShell("urunler.html", "Ürün Yönetimi", '<a class="btn btn-sm btn-primary" href="urun-duzenle.html">+ Yeni Ürün</a>');
+let db = DB.load();
+const state = { q: "", cat: "", brand: "", status: "", stock: "", sel: new Set() };
+
+function brands() { return [...new Set(db.products.map(p => p.brand))].sort(); }
+
+function filtered() {
+  const q = normalizeTR(state.q);
+  return db.products.filter(p => {
+    if (p.deletedAt) return false;
+    if (state.cat && p.category !== state.cat) return false;
+    if (state.brand && p.brand !== state.brand) return false;
+    if (state.status && p.status !== state.status) return false;
+    const s = productStock(p);
+    if (state.stock === "tukendi" && s > 0) return false;
+    if (state.stock === "kritik" && !(s > 0 && s <= (p.criticalStock ?? 2))) return false;
+    if (state.stock === "dusuk" && !(s <= (p.minStock ?? 5))) return false;
+    if (q && !normalizeTR([p.name, p.sku, p.barcode, p.brand, p.slug].join(" ")).includes(q)) return false;
+    return true;
+  });
+}
+
+function render() {
+  const rows = filtered();
+  root.innerHTML = `
+  <div class="card-a mb-3">
+    <div class="filters">
+      <div><label class="form-label small mb-1">Ara (ad, SKU, barkod)</label><input class="form-control form-control-sm" id="f-q" value="${state.q}"></div>
+      <div><label class="form-label small mb-1">Kategori</label><select class="form-select form-select-sm" id="f-cat"><option value="">Tümü</option>${db.categories.filter(c => !c.parent).map(c => `<option value="${c.id}" ${state.cat === c.id ? "selected" : ""}>${c.name}</option>`).join("")}</select></div>
+      <div><label class="form-label small mb-1">Marka</label><select class="form-select form-select-sm" id="f-brand"><option value="">Tümü</option>${brands().map(b => `<option ${state.brand === b ? "selected" : ""}>${b}</option>`).join("")}</select></div>
+      <div><label class="form-label small mb-1">Durum</label><select class="form-select form-select-sm" id="f-status"><option value="">Tümü</option><option value="taslak" ${state.status === "taslak" ? "selected" : ""}>Taslak</option><option value="yayinda" ${state.status === "yayinda" ? "selected" : ""}>Yayında</option><option value="pasif" ${state.status === "pasif" ? "selected" : ""}>Pasif/Arşiv</option></select></div>
+      <div><label class="form-label small mb-1">Stok</label><select class="form-select form-select-sm" id="f-stock"><option value="">Tümü</option><option value="dusuk" ${state.stock === "dusuk" ? "selected" : ""}>Düşük</option><option value="kritik" ${state.stock === "kritik" ? "selected" : ""}>Kritik</option><option value="tukendi" ${state.stock === "tukendi" ? "selected" : ""}>Tükendi</option></select></div>
+      <button class="btn btn-sm btn-outline-secondary" id="f-clear">Temizle</button>
+    </div>
+  </div>
+
+  <div class="card-a mb-3 d-flex flex-wrap gap-2 align-items-center">
+    <span class="muted small"><b id="selCount">${state.sel.size}</b> ürün seçildi · Toplu işlem:</span>
+    <select class="form-select form-select-sm" id="bulkStatus" style="width:auto"><option value="">Durum değiştir…</option><option value="taslak">Taslak</option><option value="yayinda">Yayında</option><option value="pasif">Pasif/Arşiv</option></select>
+    <select class="form-select form-select-sm" id="bulkCat" style="width:auto"><option value="">Kategori ata…</option>${db.categories.filter(c => !c.parent).map(c => `<option value="${c.id}">${c.name}</option>`).join("")}</select>
+    <button class="btn btn-sm btn-outline-danger" id="bulkDelete">Seçilenleri Arşivle (soft delete)</button>
+    <span class="ms-auto muted small">${rows.length} kayıt</span>
+  </div>
+
+  <div class="card-a table-wrap">
+    <table class="table-a">
+      <thead><tr>
+        <th><input type="checkbox" id="selAll"></th><th>Ürün</th><th>SKU</th><th>Kategori</th><th>Marka</th><th>Stok</th><th>Fiyat</th><th>Durum</th><th></th>
+      </tr></thead>
+      <tbody>${rows.map(p => `
+        <tr>
+          <td><input type="checkbox" class="row-sel" data-id="${p.id}" ${state.sel.has(p.id) ? "checked" : ""}></td>
+          <td><div class="d-flex align-items-center gap-2"><img class="thumb" src="${asset(p.cover)}" alt=""><div><a href="urun-duzenle.html?id=${p.id}"><b>${p.name}</b></a><div class="muted small">${p.variants.length} varyant · /${p.slug}</div></div></div></td>
+          <td class="small">${p.sku}<div class="muted">${p.barcode}</div></td>
+          <td class="small">${catName(db, p.category)}<div class="muted">${subName(db, p.category, p.subcategory)}</div></td>
+          <td class="small">${p.brand}</td>
+          <td>${stockBadge(p)}</td>
+          <td>${money(p.price)}${p.salePrice ? `<div class="muted small"><s>${money(p.listPrice)}</s></div>` : ""}</td>
+          <td>${productStatusBadge(p.status)}</td>
+          <td class="text-nowrap">
+            <a class="btn btn-sm btn-outline-primary" href="urun-duzenle.html?id=${p.id}">Düzenle</a>
+            <button class="btn btn-sm btn-outline-danger" data-del="${p.id}">Arşivle</button>
+          </td>
+        </tr>`).join("") || `<tr><td colspan="9" class="muted p-4 text-center">Kriterlere uyan ürün bulunamadı.</td></tr>`}
+      </tbody>
+    </table>
+  </div>`;
+  bind();
+}
+
+function bind() {
+  const set = (id, key) => { const e = document.getElementById(id); e.oninput = e.onchange = () => { state[key] = e.value; render(); }; };
+  set("f-q", "q"); set("f-cat", "cat"); set("f-brand", "brand"); set("f-status", "status"); set("f-stock", "stock");
+  document.getElementById("f-clear").onclick = () => { Object.assign(state, { q: "", cat: "", brand: "", status: "", stock: "" }); render(); };
+  document.getElementById("selAll").onchange = (e) => { filtered().forEach(p => e.target.checked ? state.sel.add(p.id) : state.sel.delete(p.id)); render(); };
+  $$(".row-sel").forEach(c => c.onchange = () => { c.checked ? state.sel.add(c.dataset.id) : state.sel.delete(c.dataset.id); document.getElementById("selCount").textContent = state.sel.size; });
+  $$("[data-del]").forEach(b => b.onclick = () => archive([b.dataset.del]));
+  document.getElementById("bulkStatus").onchange = (e) => {
+    if (!e.target.value || !state.sel.size) return render();
+    db.products.forEach(p => { if (state.sel.has(p.id)) p.status = e.target.value; });
+    DB.save(db); toast(state.sel.size + " ürünün durumu güncellendi"); state.sel.clear(); render();
+  };
+  document.getElementById("bulkCat").onchange = (e) => {
+    if (!e.target.value || !state.sel.size) return render();
+    db.products.forEach(p => { if (state.sel.has(p.id)) { p.category = e.target.value; p.subcategory = ""; } });
+    DB.save(db); toast("Kategori ataması yapıldı"); state.sel.clear(); render();
+  };
+  document.getElementById("bulkDelete").onclick = () => archive([...state.sel]);
+}
+
+function archive(ids) {
+  if (!ids.length) return toast("Önce ürün seçin", "error");
+  if (!confirm(ids.length + " ürün arşivlenecek (sipariş geçmişi korunur). Onaylıyor musunuz?")) return;
+  db.products.forEach(p => { if (ids.includes(p.id)) { p.deletedAt = new Date().toISOString().slice(0, 10); p.status = "pasif"; } });
+  DB.save(db); state.sel.clear(); toast("Ürünler arşivlendi (soft delete)"); render();
+}
+render();
+</script>
+</body>
+</html>

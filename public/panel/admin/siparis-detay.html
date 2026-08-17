@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sipariş Detayı | Voltra Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../img/favicon.svg">
+<link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<script src="../js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin.js"></script>
+<script>
+const root = renderShell("siparisler.html", "Sipariş Detayı", '<a class="btn btn-sm btn-outline-secondary" href="siparisler.html">← Siparişler</a>');
+let db = DB.load();
+const oid = new URLSearchParams(location.search).get("id");
+let o = db.orders.find(x => x.id === oid);
+
+function render() {
+  if (!o) { root.innerHTML = '<div class="card-a">Sipariş bulunamadı.</div>'; return; }
+  const next = ORDER_STATUSES[o.status].next;
+  root.innerHTML = `
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card-a">
+        <div class="d-flex justify-content-between flex-wrap gap-2">
+          <div><h2 class="h5 mb-1">${o.id}</h2><div class="muted">${o.date} · ${o.payment}</div></div>
+          <div>${statusBadge(o.status)}</div>
+        </div>
+      </div>
+
+      <div class="card-a">
+        <h2 class="h6 mb-3">Sipariş Kalemleri</h2>
+        <div class="table-wrap"><table class="table-a">
+          <thead><tr><th>Ürün</th><th>Varyant</th><th>Adet</th><th>Birim Fiyat</th><th>Satır Toplamı</th></tr></thead>
+          <tbody>${o.items.map(it => `<tr><td>${it.name}</td><td>${it.variant}</td><td>${it.qty}</td><td>${money(it.price)}</td><td>${money(it.price * it.qty)}</td></tr>`).join("")}</tbody>
+        </table></div>
+        <div class="d-flex justify-content-end mt-3"><div style="min-width:280px">
+          <div class="d-flex justify-content-between py-1"><span class="muted">Ara Toplam</span><b>${money(o.subtotal)}</b></div>
+          <div class="d-flex justify-content-between py-1"><span class="muted">KDV (%20)</span><span>${money(o.vat)}</span></div>
+          <div class="d-flex justify-content-between py-1"><span class="muted">İndirim</span><span>-${money(o.discount)}</span></div>
+          <hr class="my-2">
+          <div class="d-flex justify-content-between"><b>Genel Toplam</b><b>${money(o.total)}</b></div>
+        </div></div>
+      </div>
+
+      <div class="card-a">
+        <h2 class="h6 mb-3">Durum Geçmişi</h2>
+        <ul class="list-unstyled mb-0">${o.history.map(h => `<li class="d-flex gap-2 py-1"><span>${statusBadge(h.status)}</span><span class="muted small">${h.at} · ${h.by}</span></li>`).join("")}</ul>
+      </div>
+
+      <div class="card-a">
+        <h2 class="h6 mb-2">Admin Notları <span class="muted small">(müşteriye görünmez)</span></h2>
+        ${o.adminNotes.map(n => `<div class="border rounded p-2 mb-2 small">${n.text}<div class="muted">${n.at}</div></div>`).join("") || '<div class="muted small mb-2">Not yok.</div>'}
+        <div class="d-flex gap-2"><input class="form-control form-control-sm" id="noteInp" placeholder="İç not ekle"><button class="btn btn-sm btn-outline-primary" id="addNote">Ekle</button></div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card-a">
+        <h2 class="h6 mb-2">Müşteri</h2>
+        <div><b>${o.customerName}</b></div>
+        <div class="muted small">${o.customerEmail}<br>${o.customerPhone}</div>
+        <a class="btn btn-sm btn-outline-secondary mt-2" href="musteri-detay.html?id=${o.customerId}">Hesabı Görüntüle</a>
+      </div>
+      <div class="card-a">
+        <h2 class="h6 mb-2">Teslimat Adresi</h2>
+        <div class="small">${o.address}</div>
+        ${o.billingAddress ? `<h2 class="h6 mt-3 mb-2">Fatura Adresi</h2><div class="small">${o.billingAddress}</div>` : ""}
+        ${o.note ? `<h2 class="h6 mt-3 mb-2">Müşteri Notu</h2><div class="small">${o.note}</div>` : ""}
+      </div>
+      <div class="card-a">
+        <h2 class="h6 mb-2">Durum Güncelle</h2>
+        ${next.length ? `
+          <select class="form-select form-select-sm mb-2" id="newStatus">${next.map(s => `<option value="${s}">${ORDER_STATUSES[s].name}</option>`).join("")}</select>
+          <input class="form-control form-control-sm mb-2" id="tracking" placeholder="Kargo takip no" value="${o.tracking}">
+          <button class="btn btn-primary btn-sm w-100" id="apply">Durumu Güncelle</button>
+          <div class="muted small mt-2">Durum makinesi: yalnızca izinli geçişler listelenir. İptal edilen siparişte stoklar otomatik iade edilir.</div>
+        ` : '<div class="muted small">Bu durum son durumdur; geçiş yapılamaz.</div>'}
+      </div>
+    </div>
+  </div>`;
+  bind();
+}
+
+function bind() {
+  const a = $("#apply");
+  if (a) a.onclick = () => {
+    const s = $("#newStatus").value;
+    o.tracking = $("#tracking").value.trim();
+    o.status = s;
+    o.history.push({ status: s, at: new Date().toISOString().slice(0, 16).replace("T", " "), by: "admin" });
+    if (s === "iptal") {
+      o.items.forEach(it => addMovement(db, { productId: it.productId, type: "iptal-iade", qty: it.qty, note: "Sipariş iptali: " + o.id }));
+      toast("Sipariş iptal edildi, stoklar iade edildi");
+    } else toast("Durum güncellendi, müşteriye bildirim gönderildi (demo)");
+    DB.save(db); render();
+  };
+  const n = $("#addNote");
+  if (n) n.onclick = () => {
+    const v = $("#noteInp").value.trim(); if (!v) return;
+    o.adminNotes.push({ text: v, at: new Date().toLocaleString("tr-TR") });
+    DB.save(db); render();
+  };
+}
+render();
+</script>
+</body>
+</html>

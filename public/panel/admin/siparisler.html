@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Siparişler | Voltra Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../img/favicon.svg">
+<link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<script src="../js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin.js"></script>
+<script>
+const root = renderShell("siparisler.html", "Sipariş Yönetimi");
+let db = DB.load();
+const st = { q: "", status: "", from: "", to: "" };
+
+function rows() {
+  const q = normalizeTR(st.q);
+  return db.orders.filter(o => {
+    if (st.status && o.status !== st.status) return false;
+    if (st.from && o.date < st.from) return false;
+    if (st.to && o.date > st.to) return false;
+    if (q && !normalizeTR([o.id, o.customerName, o.customerEmail, o.customerPhone].join(" ")).includes(q)) return false;
+    return true;
+  });
+}
+
+function render() {
+  const list = rows();
+  root.innerHTML = `
+  <div class="card-a mb-3"><div class="filters">
+    <div><label class="form-label small mb-1">Ara (sipariş no, müşteri)</label><input class="form-control form-control-sm" id="q" value="${st.q}"></div>
+    <div><label class="form-label small mb-1">Durum</label><select class="form-select form-select-sm" id="status"><option value="">Tümü</option>${Object.entries(ORDER_STATUSES).map(([k, v]) => `<option value="${k}" ${st.status === k ? "selected" : ""}>${v.name}</option>`).join("")}</select></div>
+    <div><label class="form-label small mb-1">Başlangıç</label><input type="date" class="form-control form-control-sm" id="from" value="${st.from}"></div>
+    <div><label class="form-label small mb-1">Bitiş</label><input type="date" class="form-control form-control-sm" id="to" value="${st.to}"></div>
+    <span class="ms-auto muted small align-self-center">${list.length} sipariş · Toplam ${money(list.filter(o => o.status !== "iptal").reduce((s, o) => s + o.total, 0))}</span>
+  </div></div>
+
+  <div class="card-a table-wrap"><table class="table-a">
+    <thead><tr><th>Sipariş No</th><th>Tarih</th><th>Müşteri</th><th>Ödeme</th><th>Kalem</th><th>Tutar</th><th>Durum</th><th></th></tr></thead>
+    <tbody>${list.map(o => `<tr>
+      <td><b>${o.id}</b></td><td>${o.date}</td>
+      <td>${o.customerName}<div class="muted small">${o.customerPhone}</div></td>
+      <td class="small">${o.payment}</td><td>${o.items.length}</td><td>${money(o.total)}</td><td>${statusBadge(o.status)}</td>
+      <td><a class="btn btn-sm btn-outline-primary" href="siparis-detay.html?id=${encodeURIComponent(o.id)}">Detay</a></td>
+    </tr>`).join("") || `<tr><td colspan="8" class="muted text-center p-4">Sipariş bulunamadı.</td></tr>`}</tbody>
+  </table></div>`;
+  ["q", "status", "from", "to"].forEach(k => { const e = document.getElementById(k); e.oninput = e.onchange = () => { st[k] = e.value; render(); }; });
+}
+render();
+</script>
+</body>
+</html>

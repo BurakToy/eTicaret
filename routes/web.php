@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('index');
 });
 
 Route::get('/a', function () {
@@ -23,6 +23,16 @@ Route::get('/a', function () {
     $category = category::find($id);
     $products = $category->getProduct;
     return dd($products);
+});
+
+Route::get('/b', function () {
+    return view('layout.app');
+});
+Route::get('/c', function () {
+    return view('layout.app2');
+});
+Route::get('/d', function () {
+    return view('layout.app3');
 });
 
 

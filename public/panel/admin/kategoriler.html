@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kategoriler | Voltra Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../img/favicon.svg">
+<link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<script src="../js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin.js"></script>
+<script>
+const root = renderShell("kategoriler.html", "Kategori Yönetimi");
+let db = DB.load();
+let editing = null;
+
+const productCount = (id) => db.products.filter(p => !p.deletedAt && (p.category === id || `${p.category}:${p.subcategory}` === id)).length;
+
+function render() {
+  const roots = db.categories.filter(c => !c.parent).sort((a, b) => a.order - b.order);
+  root.innerHTML = `
+  <div class="row g-3">
+    <div class="col-lg-7"><div class="card-a">
+      <h2 class="h6 mb-3">Kategori Ağacı (parent_id ile self-referencing)</h2>
+      ${roots.map(c => `
+        <div class="tree-item">
+          <img class="thumb" src="${asset(c.image)}" alt="">
+          <div class="flex-grow-1"><b>${c.name}</b> <span class="muted small">/${c.slug} · sıra ${c.order} · ${productCount(c.id)} ürün</span></div>
+          <span class="badge text-bg-${c.active ? "success" : "secondary"}">${c.active ? "Aktif" : "Pasif"}</span>
+          <button class="btn btn-sm btn-outline-secondary" data-up="${c.id}">↑</button>
+          <button class="btn btn-sm btn-outline-secondary" data-down="${c.id}">↓</button>
+          <button class="btn btn-sm btn-outline-primary" data-edit="${c.id}">Düzenle</button>
+          <button class="btn btn-sm btn-outline-danger" data-del="${c.id}">Sil</button>
+        </div>
+        ${db.categories.filter(s => s.parent === c.id).sort((a, b) => a.order - b.order).map(s => `
+        <div class="tree-item child">
+          <span class="muted">↳</span>
+          <div class="flex-grow-1"><b>${s.name}</b> <span class="muted small">/${s.slug} · sıra ${s.order} · ${productCount(s.id)} ürün</span></div>
+          <span class="badge text-bg-${s.active ? "success" : "secondary"}">${s.active ? "Aktif" : "Pasif"}</span>
+          <button class="btn btn-sm btn-outline-secondary" data-up="${s.id}">↑</button>
+          <button class="btn btn-sm btn-outline-secondary" data-down="${s.id}">↓</button>
+          <button class="btn btn-sm btn-outline-primary" data-edit="${s.id}">Düzenle</button>
+          <button class="btn btn-sm btn-outline-danger" data-del="${s.id}">Sil</button>
+        </div>`).join("")}
+      `).join("")}
+    </div></div>
+
+    <div class="col-lg-5"><div class="card-a">
+      <h2 class="h6 mb-3">${editing ? "Kategori Düzenle" : "Yeni Kategori"}</h2>
+      <form id="cf">
+        <div class="mb-2"><label class="form-label">Kategori Adı *</label><input class="form-control" name="name" value="${editing?.name || ""}" required></div>
+        <div class="mb-2"><label class="form-label">Üst Kategori (parent)</label>
+          <select class="form-select" name="parent"><option value="">— Kök kategori —</option>${db.categories.filter(c => !c.parent && c.id !== editing?.id).map(c => `<option value="${c.id}" ${editing?.parent === c.id ? "selected" : ""}>${c.name}</option>`).join("")}</select></div>
+        <div class="mb-2"><label class="form-label">SEO URL (slug)</label><input class="form-control" name="slug" value="${editing?.slug || ""}" placeholder="otomatik üretilir"></div>
+        <div class="mb-2"><label class="form-label">Kategori Görseli</label>
+          <select class="form-select" name="image"><option value="">—</option>${["img/bilgisayar.jpg","img/telefon.jpg","img/tablet.jpg","img/ses.jpg","img/monitor.jpg","img/aksesuar.jpg","img/hoparlor.jpg","img/saat.jpg"].map(i => `<option value="${i}" ${editing?.image === i ? "selected" : ""}>${i.split("/").pop()}</option>`).join("")}</select></div>
+        <div class="mb-2"><label class="form-label">Sıra</label><input class="form-control" type="number" name="order" value="${editing?.order || 99}"></div>
+        <div class="mb-2"><label class="form-label">SEO Başlığı</label><input class="form-control" name="seoTitle" value="${editing?.seoTitle || ""}"></div>
+        <div class="mb-2"><label class="form-label">SEO Açıklaması</label><textarea class="form-control" name="seoDesc" rows="2">${editing?.seoDesc || ""}</textarea></div>
+        <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="active" id="act" ${editing ? (editing.active ? "checked" : "") : "checked"}><label class="form-check-label" for="act">Aktif (frontend'de görünür)</label></div>
+        <button class="btn btn-primary w-100" type="submit">${editing ? "Güncelle" : "Kategori Ekle"}</button>
+        ${editing ? '<button class="btn btn-outline-secondary w-100 mt-2" type="button" id="cancel">Vazgeç</button>' : ""}
+      </form>
+      <hr>
+      <div class="muted small">
+        <b>İş kuralları:</b> Bağlı ürünü olan kategori silinemez; pasifleştirme önerilir. Bir kategori pasif yapıldığında alt kategorilerin de pasifleştirilmesi onaya sunulur. Sıra değişikliği menüye anında yansır.
+      </div>
+    </div></div>
+  </div>`;
+  bind();
+}
+
+function bind() {
+  $$("[data-edit]").forEach(b => b.onclick = () => { editing = db.categories.find(c => c.id === b.dataset.edit); render(); });
+  $$("[data-del]").forEach(b => b.onclick = () => del(b.dataset.del));
+  $$("[data-up]").forEach(b => b.onclick = () => move(b.dataset.up, -1));
+  $$("[data-down]").forEach(b => b.onclick = () => move(b.dataset.down, +1));
+  const c = $("#cancel"); if (c) c.onclick = () => { editing = null; render(); };
+  $("#cf").onsubmit = (e) => { e.preventDefault(); save(new FormData(e.target)); };
+}
+
+function move(id, dir) {
+  const cat = db.categories.find(c => c.id === id);
+  const sibs = db.categories.filter(c => c.parent === cat.parent).sort((a, b) => a.order - b.order);
+  const i = sibs.indexOf(cat), j = i + dir;
+  if (j < 0 || j >= sibs.length) return;
+  const t = sibs[j].order; sibs[j].order = cat.order; cat.order = t;
+  DB.save(db); toast("Sıralama güncellendi"); render();
+}
+
+function del(id) {
+  const cat = db.categories.find(c => c.id === id);
+  const kids = db.categories.filter(c => c.parent === id);
+  if (productCount(id) > 0) return toast("Bağlı ürün olduğu için silinemez — pasifleştirin", "error");
+  if (kids.length) return toast("Önce alt kategorileri silin veya taşıyın", "error");
+  if (!confirm(cat.name + " silinsin mi?")) return;
+  db.categories = db.categories.filter(c => c.id !== id);
+  DB.save(db); editing = null; toast("Kategori silindi"); render();
+}
+
+function save(f) {
+  const o = Object.fromEntries(f.entries());
+  const active = f.get("active") === "on";
+  const slug = (o.slug || slugify(o.name)).trim();
+  const id = o.parent ? `${o.parent}:${slug}` : slug;
+  if (!editing && db.categories.some(c => c.id === id)) return toast("Bu kategori zaten var", "error");
+  if (editing) {
+    const wasActive = editing.active;
+    Object.assign(editing, { name: o.name, parent: o.parent || null, slug, image: o.image, order: Number(o.order), seoTitle: o.seoTitle, seoDesc: o.seoDesc, active });
+    if (wasActive && !active && db.categories.some(c => c.parent === editing.id)) {
+      if (confirm("Alt kategoriler de pasif yapılsın mı?")) db.categories.forEach(c => { if (c.parent === editing.id) c.active = false; });
+    }
+    toast("Kategori güncellendi");
+  } else {
+    db.categories.push({ id, name: o.name, parent: o.parent || null, slug, image: o.image, order: Number(o.order), seoTitle: o.seoTitle, seoDesc: o.seoDesc, active });
+    toast("Kategori eklendi");
+  }
+  DB.save(db); editing = null; render();
+}
+render();
+</script>
+</body>
+</html>

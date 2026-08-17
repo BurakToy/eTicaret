@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stok Yönetimi | Voltra Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../img/favicon.svg">
+<link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<script src="../js/data.js"></script>
+<script src="js/admin-data.js"></script>
+<script src="js/admin.js"></script>
+<script>
+const root = renderShell("stok.html", "Stok Yönetimi");
+let db = DB.load();
+const st = { q: "", only: "" };
+
+function render() {
+  db = DB.load();
+  const prods = db.products.filter(p => !p.deletedAt).filter(p => {
+    if (st.q && !normalizeTR(p.name + " " + p.sku).includes(normalizeTR(st.q))) return false;
+    const s = productStock(p);
+    if (st.only === "dusuk" && s > (p.minStock ?? 5)) return false;
+    if (st.only === "kritik" && s > (p.criticalStock ?? 2)) return false;
+    if (st.only === "tukendi" && s > 0) return false;
+    return true;
+  });
+  root.innerHTML = `
+  <div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="card-a stat"><span class="lbl">Minimum seviyenin altında</span><span class="val text-warning">${db.products.filter(p => !p.deletedAt && productStock(p) <= (p.minStock ?? 5)).length}</span></div></div>
+    <div class="col-md-4"><div class="card-a stat"><span class="lbl">Kritik stok</span><span class="val text-danger">${db.products.filter(p => !p.deletedAt && productStock(p) <= (p.criticalStock ?? 2)).length}</span></div></div>
+    <div class="col-md-4"><div class="card-a stat"><span class="lbl">Toplam stok adedi</span><span class="val">${db.products.filter(p => !p.deletedAt).reduce((s, p) => s + productStock(p), 0)}</span></div></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7"><div class="card-a">
+      <div class="filters mb-3">
+        <div><label class="form-label small mb-1">Ara</label><input class="form-control form-control-sm" id="q" value="${st.q}"></div>
+        <div><label class="form-label small mb-1">Filtre</label><select class="form-select form-select-sm" id="only"><option value="">Tümü</option><option value="dusuk" ${st.only==="dusuk"?"selected":""}>Düşük</option><option value="kritik" ${st.only==="kritik"?"selected":""}>Kritik</option><option value="tukendi" ${st.only==="tukendi"?"selected":""}>Tükendi</option></select></div>
+      </div>
+      <div class="table-wrap"><table class="table-a">
+        <thead><tr><th>Ürün / Varyant</th><th>SKU</th><th>Stok</th><th>Min/Kritik</th></tr></thead>
+        <tbody>${prods.map(p => `
+          <tr><td><b>${p.name}</b></td><td>${p.sku}</td><td>${stockBadge(p)}</td><td class="small muted">${p.minStock} / ${p.criticalStock}</td></tr>
+          ${p.variants.map(v => `<tr><td class="ps-4 small muted">↳ ${v.color}${v.size ? " · " + v.size : ""}</td><td class="small">${v.sku}</td><td class="small">${v.stock}</td><td></td></tr>`).join("")}
+        `).join("") || `<tr><td colspan="4" class="muted text-center p-4">Kayıt yok.</td></tr>`}</tbody>
+      </table></div>
+    </div></div>
+
+    <div class="col-lg-5">
+      <div class="card-a">
+        <h2 class="h6 mb-3">Stok Hareketi Ekle</h2>
+        <form id="mf">
+          <div class="mb-2"><label class="form-label">Ürün *</label><select class="form-select" id="prod" required>${db.products.filter(p => !p.deletedAt).map(p => `<option value="${p.id}">${p.name}</option>`).join("")}</select></div>
+          <div class="mb-2"><label class="form-label">Varyant</label><select class="form-select" id="variant"></select></div>
+          <div class="mb-2"><label class="form-label">Hareket Türü *</label><select class="form-select" id="type">${Object.entries(MOVEMENT_TYPES).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("")}</select></div>
+          <div class="mb-2"><label class="form-label">Miktar *</label><input class="form-control" type="number" id="qty" min="0" value="1" required></div>
+          <div class="mb-3"><label class="form-label">Açıklama</label><input class="form-control" id="note" placeholder="Örn. tedarikçi mal kabulü"></div>
+          <button class="btn btn-primary w-100">Hareketi Kaydet</button>
+        </form>
+      </div>
+      <div class="card-a">
+        <h2 class="h6 mb-3">Stok Geçmişi</h2>
+        <div class="table-wrap" style="max-height:360px"><table class="table-a">
+          <thead><tr><th>Tarih</th><th>Ürün</th><th>Tür</th><th>Miktar</th><th>Önce→Sonra</th><th>Kullanıcı</th></tr></thead>
+          <tbody>${db.movements.slice(0, 40).map(m => {
+            const p = db.products.find(x => x.id === m.productId);
+            return `<tr><td class="small">${m.date}</td><td class="small">${p ? p.name : m.productId}</td><td class="small">${MOVEMENT_TYPES[m.type].name}</td><td>${m.qty}</td><td class="small muted">${m.before} → ${m.after}</td><td class="small">${m.user}</td></tr>`;
+          }).join("")}</tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>`;
+  bind();
+}
+
+function fillVariants() {
+  const p = db.products.find(x => x.id === $("#prod").value);
+  $("#variant").innerHTML = (p?.variants || []).map(v => `<option value="${v.id}">${v.color}${v.size ? " · " + v.size : ""} (${v.stock})</option>`).join("") || '<option value="">Varyantsız</option>';
+}
+
+function bind() {
+  ["q", "only"].forEach(k => { const e = document.getElementById(k); e.oninput = e.onchange = () => { st[k] = e.value; render(); }; });
+  $("#prod").onchange = fillVariants;
+  fillVariants();
+  $("#mf").onsubmit = (e) => {
+    e.preventDefault();
+    addMovement(db, { productId: $("#prod").value, variantId: $("#variant").value, type: $("#type").value, qty: Number($("#qty").value), note: $("#note").value });
+    DB.save(db); toast("Stok hareketi kaydedildi"); render();
+  };
+}
+render();
+</script>
+</body>
+</html>
