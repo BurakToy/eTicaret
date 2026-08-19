@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CategoryController;
 use App\Models\category;
 use App\Models\product;
 use Illuminate\Support\Facades\Route;
@@ -16,7 +17,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('index');
+})->name('index');
+Route::get('/index', function () {
+    return view('index');
 });
+
 
 Route::get('/a', function () {
     $id=1;
@@ -34,6 +39,11 @@ Route::get('/c', function () {
 Route::get('/d', function () {
     return view('layout.app3');
 });
+
+//site rotaları başalngıç
+
+Route::get('/{category:slug}',[CategoryController::class,'index'] )->name('category.index');
+//site rotaları bitiş
 
 
 

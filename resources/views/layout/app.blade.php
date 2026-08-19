@@ -16,7 +16,7 @@
 <div class="site-header">
     <div class="wrap header-main">
         <button class="menu-btn" id="menuBtn" aria-label="Menü">☰</button>
-        <a class="logo" href="index.html"><span class="logo-mark">V</span><span>Voltra</span></a>
+        <a class="logo" href="{{route('index')}}"><span class="logo-mark">V</span><span>Voltra</span></a>
         <div class="search">
             <span class="icon">🔍</span>
             <input id="searchInput" type="search" placeholder="Ürün, marka veya kategori ara" aria-label="Site içi arama" autocomplete="off">

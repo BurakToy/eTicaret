@@ -46,16 +46,42 @@
 
             </div>
         </section>
-
+        <section class="section wrap" style="padding-top:0">
+            <div class="section-head"><h2>Öne çıkanlar</h2><a href="kategori.html">Tümünü gör →</a></div>
+            @php $featuredproducts=\App\Models\product::where('is_featured', 1)->get();                    @endphp
+            <div class="grid-products" >
+            @foreach($featuredproducts->take(4) as $p)
+                @include('new.product')
+            @endforeach
+            </div>
+        </section>
         <section class="section wrap" style="padding-top:0">
             <div class="section-head"><h2>Çok satanlar</h2><a href="kategori.html">Tümünü gör →</a></div>
-            <div class="grid-products" id="bestGrid"></div>
+                @php $bestsellerproducts=\App\Models\product::where('is_bestseller', 1)->get();                    @endphp
+            <div class="grid-products" >
+            @foreach($bestsellerproducts->take(4) as $p)
+                @include('new.product')
+                @endforeach
+            </div>
+        </section>
+        <section class="section wrap" style="padding-top:0">
+            <div class="section-head"><h2>Yeni ürünler</h2><a href="kategori.html">Tümünü gör →</a></div>
+            @php $newproducts=\App\Models\product::where('is_new', 1)->get();                    @endphp
+            <div class="grid-products" >
+                @foreach($newproducts->take(4) as $p)
+                    @include('new.product')
+                @endforeach
+            </div>
+        </section>
+        <section class="section wrap" style="padding-top:0">
+            <div class="section-head"><h2>Kampanyalı ürünler</h2><a href="kategori.html?indirim=1">Tüm kampanyalar →</a></div>
+            @php $campaignproducts=\App\Models\product::where('is_campaign', 1)->get();                    @endphp
+            <div class="grid-products" >
+            @foreach($campaignproducts->take(4) as $p)
+                @include('new.product')
+            @endforeach
+            </div>
         </section>
 
-        <section class="section wrap" style="padding-top:0">
-            <div class="section-head"><h2>İndirimdeki ürünler</h2><a href="kategori.html?indirim=1">Tüm kampanyalar →</a></div>
-            <div class="grid-products" id="saleGrid"></div>
-        </section>
     </main>
-    aaaa
 @endsection
