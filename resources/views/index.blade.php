@@ -1,4 +1,7 @@
 @extends('layout.app')
+@section('title')
+    Voltra | Bilgisayar, Telefon ve Teknoloji Mağazası
+@endsection
 @section('content')
     <main>
         <section class="hero">
@@ -34,13 +37,11 @@
 
 
                 @foreach($Parentcategories as $c)
-                    <article class="cat-card"><a class="cat-main" href="kategori.html?c=bilgisayar"><div class="ico">💻</div><strong>{{$c->name}}</strong>
+                    <article class="cat-card"><a class="cat-main" href="{{route('category.index',$c->slug)}}"><div class="ico">💻</div><strong>{{$c->name}}</strong>
                             <span>açıklama</span>
                         </a><div class="cat-subs">
-                            @foreach($categories as $b) @if($c->id==$b->parent_id) <a href="kategori.html?c=bilgisayar&amp;s=dizustu">{{$b->name}}</a>@endif @endforeach
-                            <a href="kategori.html?c=bilgisayar&amp;s=dizustu">Dizüstü Bilgisayar</a>
-                            <a href="kategori.html?c=bilgisayar&amp;s=oyuncu">Oyuncu Bilgisayarı</a>
-                            <a href="kategori.html?c=bilgisayar&amp;s=profesyonel">Profesyonel İş İstasyonu</a></div></article>
+                            @foreach($categories as $b) @if($c->id==$b->parent_id) <a href="{{route('category.index',$b->slug)}}">{{$b->name}}</a>@endif @endforeach
+                           </div></article>
                 @endforeach
 
 

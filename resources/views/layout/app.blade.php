@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Voltra | Bilgisayar, Telefon ve Teknoloji Mağazası</title>
+    <title>@yield('title')</title>
     <meta name="description" content="Dizüstü bilgisayar, akıllı telefon, tablet, monitör ve aksesuarlar Voltra'da. Distribütör garantili, 2.500 TL üzeri kargo bedava.">
     <link rel="icon" href="{{asset('panel/img/favicon.svg')}}" type="image/svg+xml">
     <link rel="stylesheet" href="{{asset('panel/vendor/bootstrap/css/bootstrap.min.css')}}">
@@ -35,16 +35,16 @@
             $NonParentcategories=\App\Models\category::doesnthave('children')->wherenull('parent_id')->get();
          @endphp
             @foreach($Parentcategories as $c)
-                    <div class="nav-item"><a class="nav-link" href="kategori.html?c=${c.slug}">
+                    <div class="nav-item"><a class="nav-link" href="{{route('category.index',$c->slug)}}">
                             <span>{{$c->name}}</span>
 
                             <span class="nav-chevron">⌄</span></a><div class="submenu"><strong>{{$c->name}}</strong>
-                               @foreach($categories as $b) @if($c->id==$b->parent_id) <a href="kategori.html?c=${c.slug}&s=${sub.slug}">{{$b->name}}</a> @endif @endforeach
-                            <a class="all-link" href="kategori.html?c=${c.slug}">Tümünü görüntüle →</a></div></div>
+                               @foreach($categories as $b) @if($c->id==$b->parent_id) <a href="{{route('category.index',$b->slug)}}">{{$b->name}}</a> @endif @endforeach
+                            <a class="all-link" href="{{route('category.index',$c->slug)}}">Tümünü görüntüle →</a></div></div>
 
             @endforeach
             @foreach($NonParentcategories as $n)
-                <a class="link" href="kategori.html?indirim=1">{{$n->name}}</a>
+                <a class="link" href="{{route('category.index',$n->slug)}}">{{$n->name}}</a>
             @endforeach
 
             <a class="sale" href="kategori.html?indirim=1">Kampanyalar</a>

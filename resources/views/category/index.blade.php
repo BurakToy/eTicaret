@@ -1,4 +1,7 @@
 @extends('layout.app')
+@section('title')
+    Voltra | {{$category->slug}}
+@endsection
 @section('content')
     <main>
         <div class="page-head"><div class="wrap">

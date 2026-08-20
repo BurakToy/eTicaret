@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ProductController;
 use App\Models\category;
 use App\Models\product;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +44,9 @@ Route::get('/d', function () {
 //site rotaları başalngıç
 
 Route::get('/{category:slug}',[CategoryController::class,'index'] )->name('category.index');
+
+
+Route::get('/{category:slug}/{product:slug}/{variation:slug?}',[ProductController::class,'index'] )->name('product.index');
 //site rotaları bitiş
 
 
