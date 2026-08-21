@@ -8,23 +8,25 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function index($categorySlug,$productSlug, $variantSlug = null)
+    public function index($categorySlug,$productSlug, $variantid = null)
     {
         $category=Category::where('slug',$categorySlug)->firstOrFail();
         $product = Product::where('slug', $productSlug)
             ->firstOrFail();
 
+        $getvariant =$product->getProductVariation()->get() ;
         $variant = null;
 
-        if ($variantSlug != null) {
+
+        if ($variantid != null) {
 
             $variant = $product->getProductVariation()
-                ->where('slug', $variantSlug)
+                ->where('id', $variantid)
                 ->firstOrFail();
 
         }
 
-        return view('product.index', compact('product', 'variant', 'category'));
+        return view('product.index', compact('product', 'variant', 'category', 'getvariant'));
     }
 
 

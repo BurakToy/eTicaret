@@ -1,7 +1,7 @@
 
 {{-- kullanmak istediğin yere  @include('new.product'))--}}
         <article class="product-card">
-            <a class="thumb" href="urun.html?p=${p.slug}">
+            <a class="thumb" href="{{route('product.index', ['category' => $p->getcategory->slug,'product' => $p->slug])}}">
                 <img src="${p.images[0]}" alt="{{$p->name}}" loading="lazy">
                 <span class="flags">
                                 @if($p->price!=$p->discount_price)  <span class="badge badge-danger">%{{(($p->price-$p->discount_price)/$p->price)*100}} indirim</span>@endif

@@ -46,7 +46,7 @@ Route::get('/d', function () {
 Route::get('/{category:slug}',[CategoryController::class,'index'] )->name('category.index');
 
 
-Route::get('/{category:slug}/{product:slug}/{variation:slug?}',[ProductController::class,'index'] )->name('product.index');
+Route::get('/{category:slug}/{product:slug}/{variation:id?}',[ProductController::class,'index'] )->name('product.index');
 //site rotaları bitiş
 
 
